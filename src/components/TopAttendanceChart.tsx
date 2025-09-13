@@ -1,29 +1,14 @@
-// This will be a Server Component (no 'use client')
-import { db } from "@/db/drizzle";
-import { users as usersTable, attendances as attendancesTable, events as eventsTable } from "@/db/schema";
-import { eq, count, desc, sql } from "drizzle-orm";
 import { ChartBarLabelCustom } from "./charts";
 
-export default async function TopAttendeesChart() {
-  // Fetch data here on the server
-  const topAttendees = await db
-    .select({
-      userId: attendancesTable.userId,
-      userName: usersTable.name,
-      attendanceCount: count(attendancesTable.id),
-      pmCount: sql<number>`count(case when ${attendancesTable.attended} = true and ${eventsTable.eventName} like '%PM%' then 1 end)`,
-      cmCount: sql<number>`count(case when ${attendancesTable.attended} = true and ${eventsTable.eventName} like '%CM%' then 1 end)`
-    })
-    .from(attendancesTable)
-    .innerJoin(usersTable, eq(attendancesTable.userId, usersTable.id))
-    .innerJoin(eventsTable, eq(attendancesTable.eventId, eventsTable.id))
-    .where(eq(attendancesTable.attended, true))
-    .groupBy(attendancesTable.userId, usersTable.name)
-    .orderBy(desc(count(attendancesTable.id)))
-    .limit(5);
-    
+export default function TopAttendeesChart() {
+  // Mock data for top attendees
+  const topAttendees = [
+    { userId: 1, userName: "Wesley Kieu", attendanceCount: 18, pmCount: 11, cmCount: 7 },
+    { userId: 2, userName: "Alex Chen", attendanceCount: 15, pmCount: 9, cmCount: 6 },
+    { userId: 3, userName: "Sarah Johnson", attendanceCount: 14, pmCount: 8, cmCount: 6 },
+    { userId: 4, userName: "Mike Rodriguez", attendanceCount: 12, pmCount: 7, cmCount: 5 },
+    { userId: 5, userName: "Emma Davis", attendanceCount: 10, pmCount: 6, cmCount: 4 },
+  ];
 
   return <ChartBarLabelCustom data={topAttendees} />;
-
-  
 }

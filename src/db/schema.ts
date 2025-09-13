@@ -7,7 +7,9 @@ export const users = pgTable("users", {
 
 export const events = pgTable("events", {
     id: serial("id").primaryKey(),
-    eventName: text("event_name").notNull()
+    eventName: text("event_name").notNull(),
+    category: text("category").notNull(), // 'brotherhood', 'education', 'service', 'fundraising', 'rush', 'procredits'
+    order: integer("order").notNull().default(0)
 });
 
 export const attendances = pgTable("attendances", {

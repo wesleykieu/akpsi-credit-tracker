@@ -22,8 +22,23 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import {
+    DndContext,
+    closestCenter,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    SortableContext,
+    useSortable,
+    arrayMove,
+    horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type User = {
     id: number;
@@ -33,6 +48,8 @@ type User = {
 type Event = {
     id: number;
     eventName: string;
+    category: string;
+    order: number;
 };
 
 type Attendance = {
@@ -45,18 +62,22 @@ type Props = {
     users: User[];
     events: Event[];
     attendance: Attendance[];
+    category?: string;
 };
 
-export default function UserAttendanceTableClient({ users: initialUsers, events: initialEvents, attendance: initialAttendance }: Props) {
+export default function UserAttendanceTableClient({ users: initialUsers, events: initialEvents, attendance: initialAttendance, category }: Props) {
     const [users, setUsers] = useState<User[]>(initialUsers);
     const [events, setEvents] = useState<Event[]>(initialEvents);
     const [attendance, setAttendance] = useState<Attendance[]>(initialAttendance);
+    const sensors = useSensors(useSensor(PointerSensor));
     const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
     const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
     const [newUserName, setNewUserName] = useState("");
     const [newEventName, setNewEventName] = useState("");
     const [selectedEventID, setSelectedEventID] = useState<string>("");
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [selectedUserID, setSelectedUserID] = useState<string>("");
+    const [isManageDeleteOpen, setIsManageDeleteOpen] = useState(false);
+    
     // Handle adding a new user
     const handleAddUser = async () => {
         if (!newUserName.trim()) return;
@@ -90,7 +111,10 @@ export default function UserAttendanceTableClient({ users: initialUsers, events:
             const res = await fetch("/api/events", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ eventName: newEventName }),
+                body: JSON.stringify({ 
+                    eventName: newEventName,
+                    category: category || "general"
+                }),
             });
 
             if (res.ok) {
@@ -106,6 +130,53 @@ export default function UserAttendanceTableClient({ users: initialUsers, events:
             alert("Failed to add event");
         }
     };
+
+    // Header column drag handlers (drag to reorder columns)
+    const handleHeaderDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const oldIndex = events.findIndex((e) => e.id === active.id);
+        const newIndex = events.findIndex((e) => e.id === over.id);
+        const next = arrayMove(events, oldIndex, newIndex).map((e, idx) => ({ ...e, order: (idx + 1) }));
+        setEvents(next);
+        try {
+            await Promise.all(
+                next.map((e) =>
+                    fetch(`/api/events/${e.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ order: e.order })
+                    })
+                )
+            );
+        } catch (err) {
+            console.error("Failed to persist column order", err);
+        }
+    };
+
+    function SortableHeaderCell({ event }: { event: Event }) {
+        const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: event.id });
+        const style: React.CSSProperties = {
+            transform: CSS.Transform.toString(transform),
+            transition,
+            cursor: "grab",
+            whiteSpace: "nowrap",
+        };
+        return (
+            <TableHead
+                ref={setNodeRef}
+                style={style}
+                {...attributes}
+                {...listeners}
+                className="sticky top-0 z-10 bg-background truncate text-center px-3"
+                title={event.eventName}
+            >
+                {event.eventName}
+            </TableHead>
+        );
+    }
+
+    // Removed auxiliary reorder dialog handlers
 
     // Handle attendance change for each user and event in the table using the API route to update the database 
     const handleAttendanceChange = async (userId: number, eventId: number, attended: boolean) => {
@@ -168,7 +239,6 @@ export default function UserAttendanceTableClient({ users: initialUsers, events:
                 
                 // Reset form and close dialog
                 setSelectedEventID("");
-                setIsDeleteDialogOpen(false);
                 
              
             } else {
@@ -182,6 +252,42 @@ export default function UserAttendanceTableClient({ users: initialUsers, events:
         }
         
         console.log("=== DELETE DEBUG END ===");
+    };
+
+    const handleDeleteUser = async (userId: number) => {
+        if(!userId || isNaN(userId)) {
+            alert("Please select a valid user to delete");
+            return;
+        }
+        try {
+            const res = await fetch(`/api/users/${userId}`, { method: "DELETE" });
+            if (res.ok) {
+                setUsers(prev => prev.filter(u => u.id !== userId));
+                setAttendance(prev => prev.filter(a => a.userId !== userId));
+                setSelectedUserID("");
+                setIsManageDeleteOpen(false);
+            } else {
+                const errorData = await res.json();
+                alert(`Failed to delete user: ${errorData.error}`);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Network error occurred");
+        }
+    };
+
+    // Single delete action: deletes event, user, or both based on selections
+    const handleCombinedDelete = async () => {
+        const hasEvent = !!selectedEventID;
+        const hasUser = !!selectedUserID;
+        if (!hasEvent && !hasUser) return;
+        if (hasEvent) {
+            await handleDeleteEvent(parseInt(selectedEventID));
+        }
+        if (hasUser) {
+            await handleDeleteUser(parseInt(selectedUserID));
+        }
+        setIsManageDeleteOpen(false);
     };
 
     
@@ -233,6 +339,61 @@ export default function UserAttendanceTableClient({ users: initialUsers, events:
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+                {/* Single Delete dialog (Event/User/Both) */}
+                <Dialog open={isManageDeleteOpen} onOpenChange={setIsManageDeleteOpen}>
+                    <DialogTrigger asChild>
+                        <Button type="button">
+                            <Trash className="w-4 h-4"/>
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[520px]">
+                        <DialogHeader>
+                            <DialogTitle>Delete Items</DialogTitle>
+                            <DialogDescription>Select an event and/or a user to delete.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-6 py-2">
+                            <div className="grid gap-2">
+                                <Label>Event</Label>
+                                <Select value={selectedEventID} onValueChange={(v) => setSelectedEventID(v)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select an event" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {events.map((e) => (
+                                            <SelectItem key={e.id} value={e.id.toString()}>
+                                                {e.eventName}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label>User</Label>
+                                <Select value={selectedUserID} onValueChange={(v) => setSelectedUserID(v)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a user" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {users.map((u) => (
+                                            <SelectItem key={u.id} value={u.id.toString()}>
+                                                {u.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                
+                            </div>
+
+                            <div className="flex gap-2 justify-end">
+                                <Button onClick={handleCombinedDelete} disabled={!selectedEventID && !selectedUserID}>
+                                    Delete
+                                </Button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
 
                 <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
                     <DialogTrigger asChild>
@@ -277,59 +438,22 @@ export default function UserAttendanceTableClient({ users: initialUsers, events:
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-                <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button type="button">
-                            <Trash className="w-4 h-4"/>
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>Delete Event</DialogTitle>
-                            <DialogDescription>Which event do you want to delete?</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <Select value={selectedEventID} 
-                                onValueChange={(value) => {
-                                setSelectedEventID(value);
-                                console.log("selected event: ", value);
-                                }}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select an event" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {events.map((events) => (
-                                        <SelectItem key={events.id} value={events.id.toString()}>
-                                            {events.eventName}
-                                    
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Button
-                                onClick={() => handleDeleteEvent(parseInt(selectedEventID))}
-                                disabled={!selectedEventID} 
-                                variant="destructive"
-                            >
-                            Delete Event
-                            </Button>
 
-                        </div>
-                    </DialogContent>
-
-
-                </Dialog>
+                {/* Column drag-and-drop handles reordering; dialog removed */}
             </div>
+        
+            {/* Drag-and-drop context moved OUTSIDE the table to avoid invalid <div> inside <tr> */} 
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleHeaderDragEnd}>
+            <SortableContext items={events.map((e) => e.id)} strategy={horizontalListSortingStrategy}>
             <ScrollArea className="h-[500px] max-h-[500px]">
-                <Table>
-                    <TableCaption>A list of your recent invoices.</TableCaption>
-                    <TableHeader>
+                <Table className="min-w-max"> 
+                    <TableCaption>A list of your recent invoices.</TableCaption> 
+                    <TableHeader className="sticky top-0 z-30 bg-background">  
                         <TableRow>
-                            <TableHead className="w-[10px]">ID</TableHead>
-                            <TableHead>Name</TableHead>
+                            <TableHead>ID</TableHead>
+                            <TableHead className="sticky left-0 z-30 bg-background">Name</TableHead> 
                             {events.map((event) => (
-                                <TableHead key={event.id}>{event.eventName}</TableHead>
+                                <SortableHeaderCell key={event.id} event={event} />
                             ))}
                         </TableRow>
                     </TableHeader>
@@ -337,23 +461,29 @@ export default function UserAttendanceTableClient({ users: initialUsers, events:
                         {users.map((user) => (
                             <TableRow key={user.id}>
                                 <TableCell>{user.id}</TableCell>
-                                <TableCell>{user.name}</TableCell>  
+                                <TableCell className="sticky left-0 z-20 bg-background">{user.name}</TableCell>  
                                 {events.map((event) => (
-                                    <TableCell key={event.id}>
-                                        <input
-                                            type="checkbox"
-                                            checked={attendance.some(a => a.userId === user.id && a.eventId === event.id)}
-                                            onChange={e =>
-                                                handleAttendanceChange(user.id, event.id, e.target.checked)
-                                            }
-                                        /> 
+                                    <TableCell key={event.id} className="text-center">
+                                        <div className="inline-flex items-center justify-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={attendance.some(a => a.userId === user.id && a.eventId === event.id)}
+                                                onChange={e =>
+                                                    handleAttendanceChange(user.id, event.id, e.target.checked)
+                                                }
+                                            />
+                                        </div>
                                     </TableCell>
                                 ))}
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
+                <ScrollBar orientation="horizontal" />
             </ScrollArea>
+            </SortableContext>
+            </DndContext>
         </div>
+    
     );
 }

@@ -74,7 +74,6 @@ export function ChartLineMultiple({ data }: ChartProps) {
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              angle={-45}
               textAnchor="end"
               height={40}
               fontSize={10}

@@ -38,7 +38,7 @@ export default function Dashboard() {
         
         <Card className="@container/card">
           <CardHeader>
-            <CardDescription>Marketing Analytics</CardDescription>
+            <CardDescription>Marketing</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums @[200px]/card:text-3xl">
               1,209
             </CardTitle>
@@ -57,7 +57,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardDescription>Active Members</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-              38
+              41
             </CardTitle>
             <CardAction>
               <Badge variant="outline">
@@ -68,7 +68,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardFooter className="flex-row items-start gap-2 text-sm">
             <div className="w-fit bg-accent rounded-md p-2 text-sm truncate flex gap-2 font-medium">
-              1 Inactive <Users className="size-4" />
+              1 In-Active <Users className="size-4" />
             </div>
             <div className="w-fit bg-accent rounded-md p-2 text-sm truncate flex gap-2 font-medium">
               1 Student Alumni <Users className="size-4" />

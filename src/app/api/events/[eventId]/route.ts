@@ -18,7 +18,7 @@ export async function DELETE(
         console.log("Event ID from params:", eventIdString);
         
         const eventId = parseInt(eventIdString);
-        
+    
         if (!eventId || isNaN(eventId)) {
             return NextResponse.json({ error: "Valid Event ID is required" }, { status: 400 });
         }
@@ -47,5 +47,31 @@ export async function DELETE(
     } catch (error) {
         console.error("Error deleting event:", error);
         return NextResponse.json({ error: "Failed to delete event" }, { status: 500 });
+    }
+}
+
+export async function PATCH(
+    request: Request,
+    { params }: { params: Promise<{ eventId: string }> }
+) {
+    try {
+        const { eventId: eventIdString } = await params;
+        const eventId = parseInt(eventIdString);
+        const { order } = await request.json();
+
+        if (!eventId || isNaN(eventId)) {
+            return NextResponse.json({ error: "Valid Event ID is required" }, { status: 400 });
+        }
+
+        const updatedEvent = await db
+            .update(events)
+            .set({ order })
+            .where(eq(events.id, eventId))
+            .returning();
+
+        return NextResponse.json(updatedEvent[0], { status: 200 });
+    } catch (error) {
+        console.error("Error updating event:", error);
+        return NextResponse.json({ error: "Failed to update event" }, { status: 500 });
     }
 }

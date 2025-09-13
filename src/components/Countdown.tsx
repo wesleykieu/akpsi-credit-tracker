@@ -18,12 +18,28 @@ function getTimeParts(diffMs: number) {
 
 export default function Countdown({ target, className }: CountdownProps) {
   const targetTime = React.useMemo(() => new Date(target).getTime(), [target])
-  const [now, setNow] = React.useState<number>(() => Date.now())
+  const [now, setNow] = React.useState<number>(0)
+  const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
+    setMounted(true)
+    setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
+
+  if (!mounted) {
+    return (
+      <div className={className} aria-live="polite" aria-label="Countdown timer">
+        <div className="grid grid-cols-4 gap-2 col-span-4">
+          <TimeBox value={0} label="Days" />
+          <TimeBox value={0} label="Hours" />
+          <TimeBox value={0} label="Minutes" />
+          <TimeBox value={0} label="Seconds" />
+        </div>
+      </div>
+    )
+  }
 
   const remaining = Math.max(0, targetTime - now)
   const { days, hours, minutes, seconds } = getTimeParts(remaining)

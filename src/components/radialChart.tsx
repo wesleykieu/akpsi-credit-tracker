@@ -21,13 +21,14 @@ import {
 export const description = "A radial chart with a label"
 
 const chartData = [
-  { browser: "PM", visitors: 275, fill: "var(--chart-1)" },
-  { browser: "CM", visitors: 200, fill: "var(--chart-2)" },
-  { browser: "Brotherhood", visitors: 187, fill: "var(--chart-3)" },
-  { browser: "Service", visitors: 173, fill: "var(--chart-4)" },
-  { browser: "Fundraising", visitors: 160, fill: "var(--chart-5)" },
-  { browser: "Education", visitors: 120, fill: "#8b5cf6" },
-  { browser: "Rush", visitors: 90, fill: "#f59e0b" },
+  { browser: "PM", visitors: 320, fill: "var(--chart-1)" },
+  { browser: "CM", visitors: 280, fill: "var(--chart-2)" },
+  { browser: "Brotherhood", visitors: 245, fill: "var(--chart-3)" },
+  { browser: "Service", visitors: 198, fill: "var(--chart-4)" },
+  { browser: "Fundraising", visitors: 165, fill: "var(--chart-5)" },
+  { browser: "Education", visitors: 142, fill: "#8b5cf6" },
+  { browser: "Rush", visitors: 98, fill: "#f59e0b" },
+  { browser: "Pro Credits", visitors: 75, fill: "#10b981" },
 ]
 
 const chartConfig = {

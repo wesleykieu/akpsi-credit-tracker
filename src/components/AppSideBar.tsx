@@ -69,27 +69,27 @@ const data = {
       items: [
         {
           title: "Brotherhood",
-          url: "#",
+          url: "/directors/brotherhood",
         },
         {
           title: "Education",
-          url: "#",
+          url: "/directors/education",
         },
         {
           title: "Service",
-          url: "#",
+          url: "/directors/service",
         },
         {
           title: "Fundraising",
-          url: "#",
+          url: "/directors/fundraising",
         },
         {
           title: "Rush",
-          url: "#",
+          url: "/directors/rush",
         },
         {
-          title: "Pro C",
-          url: "#",
+          title: "Pro Credits",
+          url: "/directors/procredits",
         }
       ],
     },
