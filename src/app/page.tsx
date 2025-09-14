@@ -1,12 +1,12 @@
 
 import AttendanceLineChart from "@/components/AttendanceLineChart";
-import TopAttendeesChart from "@/components/TopAttendanceChart";
 import { ChartRadialLabel } from "@/components/radialChart";
 import { Card, CardHeader, CardDescription, CardTitle, CardAction, CardFooter, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Users, Heart, MessageCircle, Bookmark, Share2 } from "lucide-react";
 import AllEventsLineChart from "@/components/AllEventsLineChart";
 import Countdown from "@/components/Countdown";
+import { ChartBarLabelCustom } from "@/components/charts";
 
 export default function Dashboard() {
   return (
@@ -91,7 +91,7 @@ export default function Dashboard() {
           <AttendanceLineChart />
         </div>
         <div className="col-span-1">
-          <TopAttendeesChart />
+          <ChartBarLabelCustom />
         </div>
         <div className="col-span-1">
           <ChartRadialLabel />

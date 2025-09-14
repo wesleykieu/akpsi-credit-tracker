@@ -1,5 +1,6 @@
 "use client"
 
+import useSWR from "swr"
 import { TrendingUp } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts"
 
@@ -20,17 +21,10 @@ import {
 
 export const description = "A bar chart with a custom label"
 
-const chartData = [
-  { month: "January", desktop: 186, mobile: 80 },
-  { month: "February", desktop: 305, mobile: 200 },
-  { month: "March", desktop: 237, mobile: 120 },
-  { month: "April", desktop: 73, mobile: 190 },
-  { month: "May", desktop: 209, mobile: 130 },
-  { month: "June", desktop: 214, mobile: 140 },
-]
+
 
 const chartConfig = {
-  desktop: {
+  attendanceCount: {
     label: "Total Events",
     color: "var(--chart-2)",
   },
@@ -47,17 +41,9 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-interface ChartProps {
-  data?: AttendanceData[];
-}
 
-interface AttendanceData {
-  userId: number;
-  userName: string;
-  attendanceCount: number;
-  pmCount: number;
-  cmCount: number;
-}
+
+
 
 
 // Custom tooltip component
@@ -84,22 +70,31 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     );
   }
   return null;
-};
+}
 
-export function ChartBarLabelCustom({ data }: ChartProps) {
-  const chartData = data ? data.map(item => ({
-    month: item.userName,
-    desktop: item.attendanceCount, // Total events
-    pmCount: item.pmCount,
-    cmCount: item.cmCount
-  })) : [
-    { month: "John", desktop: 7, pmCount: 3, cmCount: 4 },
-    { month: "Jane", desktop: 5, pmCount: 2, cmCount: 3 },
-    { month: "Bob", desktop: 4, pmCount: 1, cmCount: 3 },
-    { month: "Alice", desktop: 3, pmCount: 2, cmCount: 1 },
-    { month: "Charlie", desktop: 2, pmCount: 1, cmCount: 1 },
-  ]
+interface AttendanceData {
+  userId: number;
+  userName: string;
+  attendanceCount: number;
+  pmCount: number;
+  cmCount: number;
+}
+
+const fetcher = (...args: Parameters<typeof fetch>) => fetch(...args).then(res => res.json())
+
+export function ChartBarLabelCustom() {
   
+
+  const { data , error , isLoading} = useSWR<AttendanceData[]>("/api/attendance/top-attendees", fetcher);
+  
+  // Add Loading and Error State (will make UI better)
+  if (isLoading) {
+    return <div>Loading...</div>;
+   
+  }
+  if (error) {
+    return <div>Error: {error.message}</div>;
+  }
   return (
     <Card>
       <CardHeader>
@@ -110,7 +105,7 @@ export function ChartBarLabelCustom({ data }: ChartProps) {
         <ChartContainer config={chartConfig} className="w-full h-[200px]">
           <BarChart
             accessibilityLayer
-            data={chartData}
+            data={data}
             layout="vertical"
             margin={{
               right: 16,
@@ -118,7 +113,7 @@ export function ChartBarLabelCustom({ data }: ChartProps) {
           >
             <CartesianGrid horizontal={false} />
             <YAxis
-              dataKey="month"
+              dataKey="userName"
               type="category"
               tickLine={false}
               tickMargin={10}
@@ -126,26 +121,26 @@ export function ChartBarLabelCustom({ data }: ChartProps) {
               tickFormatter={(value) => value.slice(0, 3)}
               hide
             />
-            <XAxis dataKey="desktop" type="number" hide />
+            <XAxis dataKey="attendanceCount" type="number" hide />
             <ChartTooltip
               cursor={false}
               content={<CustomTooltip />}
             />
             <Bar
-              dataKey="desktop"
+              dataKey="attendanceCount"
               layout="vertical"
-              fill="var(--color-desktop)"
+              fill="var(--color-attendanceCount)"
               radius={4}
             >
               <LabelList
-                dataKey="month"
+                dataKey="userName"
                 position="insideLeft"
                 offset={8}
                 className="fill-(--color-label)"
                 fontSize={12}
               />
               <LabelList
-                dataKey="desktop"
+                dataKey="attendanceCount"
                 position="right"
                 offset={8}
                 className="fill-foreground"
